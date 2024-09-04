@@ -1,48 +1,39 @@
 #!/usr/bin/env python3
-"""Defines a class LRUCache that inherits from
-BaseCaching and implements a Least Recently Used (LRU) caching system.
+"""Least Recently Used caching module.
 """
+from collections import OrderedDict
 
-BaseCaching = __import__('base_caching').BaseCaching
+from base_caching import BaseCaching
 
 
 class LRUCache(BaseCaching):
-    """LRUCache class for a Least Recently Used caching system."""
-
+    """Represents an object that allows storing and
+    retrieving items from a dictionary with a LRU
+    algorithm when the limit is reached.
+    """
     def __init__(self):
-        """Initialize the cache and the list to track usage."""
+        """Initializes the cache.
+        """
         super().__init__()
-        self.usedKeys = []
+        self.cache_data = OrderedDict()
 
     def put(self, key, item):
-        """Add an item to the cache.
-
-        Args:
-            key (str): The key under which the item is stored.
-            item (any): The item to store in the cache.
+        """Adds an item in the cache.
         """
-        if key is not None and item is not None:
+        if key is None or item is None:
+            return
+        if key not in self.cache_data:
+            if len(self.cache_data) + 1 > BaseCaching.MAX_ITEMS:
+                lru_key, _ = self.cache_data.popitem(True)
+                print("DISCARD:", lru_key)
             self.cache_data[key] = item
-            if key not in self.usedKeys:
-                self.usedKeys.append(key)
-            else:
-                self.usedKeys.append(self.usedKeys.pop(self.usedKeys.index(key)))
-            if len(self.usedKeys) > BaseCaching.MAX_ITEMS:
-                discard = self.usedKeys.pop(0)
-                del self.cache_data[discard]
-                print('DISCARD: {}'.format(discard))
+            self.cache_data.move_to_end(key, last=False)
+        else:
+            self.cache_data[key] = item
 
     def get(self, key):
-        """Retrieve an item from the cache.
-
-        Args:
-            key (str): The key of the item to retrieve.
-
-        Returns:
-            any: The item stored in the cache, or None if the key does not exist.
+        """Retrieves an item by key.
         """
         if key is not None and key in self.cache_data:
-            self.usedKeys.append(self.usedKeys.pop(self.usedKeys.index(key)))
-            return self.cache_data.get(key)
-        return None
-
+            self.cache_data.move_to_end(key, last=False)
+        return self.cache_data.get(key, None)
