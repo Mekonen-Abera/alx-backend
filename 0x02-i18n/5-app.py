@@ -1,44 +1,9 @@
 #!/usr/bin/env python3
-"""
-A Basic flask application
-"""
-from typing import (
-    Dict, Union
-)
+""" a script that starts a Basic Babel setup """
 
-from flask import Flask
-from flask import g, request
-from flask import render_template
+from flask import request, Flask, render_template, g
 from flask_babel import Babel
-
-
-class Config(object):
-    """
-    Application configuration class
-    """
-    LANGUAGES = ['en', 'fr']
-    BABEL_DEFAULT_LOCALE = 'en'
-    BABEL_DEFAULT_TIMEZONE = 'UTC'
-
-
-# Instantiate the application object
-app = Flask(__name__)
-app.config.from_object(Config)
-
-# Wrap the application with Babel
-babel = Babel(app)
-
-
-@babel.localeselector
-def get_locale() -> str:
-    """
-    Gets locale from request object
-    """
-    locale = request.args.get('locale', '').strip()
-    if locale and locale in Config.LANGUAGES:
-        return locale
-    return request.accept_languages.best_match(app.config['LANGUAGES'])
-
+from typing import Union
 
 users = {
     1: {"name": "Balou", "locale": "fr", "timezone": "Europe/Paris"},
@@ -47,33 +12,54 @@ users = {
     4: {"name": "Teletubby", "locale": None, "timezone": "Europe/London"},
 }
 
+app = Flask(__name__)
+babel = Babel(app)
 
-def get_user(id) -> Union[Dict[str, Union[str, None]], None]:
-    """
-    Validate user login details
-    Args:
-        id (str): user id
-    Returns:
-        (Dict): user dictionary if id is valid else None
-    """
-    return users.get(int(id), 0)
+
+class Config(object):
+    '''Babel config'''
+    LANGUAGES = ['en', 'fr']
+    BABEL_DEFAULT_LOCALE = 'en'
+    BABEL_DEFAULT_TIMEZONE = 'UTC'
+
+
+app.config.from_object('5-app.Config')
+
+
+@app.route('/', methods=['GET'], strict_slashes=False)
+def hello() -> str:
+    ''' returns a simple page '''
+    return render_template('5-index.html')
+
+
+@babel.localeselector
+def get_locale() -> str:
+    '''determine the best match for supported languages
+       detect if the incoming request contains locale
+    '''
+    if request.args.get('locale'):
+        locale = request.args.get('locale')
+        if locale in app.config['LANGUAGES']:
+            return locale
+    else:
+        return request.accept_languages.best_match(app.config['LANGUAGES'])
+
+
+def get_user() -> Union[dict, None]:
+    '''returns a user dictionary or None'''
+    if request.args.get('login_as'):
+        user = int(request.args.get('login_as'))
+        if user in users:
+            return users.get(user)
+    else:
+        return None
 
 
 @app.before_request
 def before_request():
-    """
-    Adds valid user to the global session object `g`
-    """
-    setattr(g, 'user', get_user(request.args.get('login_as', 0)))
+    '''to find a user if any'''
+    g.user = get_user()
 
 
-@app.route('/', strict_slashes=False)
-def index() -> str:
-    """
-    Renders a basic html template
-    """
-    return render_template('5-index.html')
-
-
-if __name__ == '__main__':
-    app.run()
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=5000)
